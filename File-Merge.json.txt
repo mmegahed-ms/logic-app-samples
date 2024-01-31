@@ -1,0 +1,157 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Compose": {
+                "inputs": "<Root xmlns=\"http://IntegrationAccount1.Schema1\">@{substring(string(outputs('Flat_File_Decoding')?['body']),39)}@{substring(string(outputs('Flat_File_Decoding_2')?['body']),39)}\n</Root>",
+                "runAfter": {
+                    "Flat_File_Decoding": [
+                        "Succeeded"
+                    ],
+                    "Flat_File_Decoding_2": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Compose"
+            },
+            "Flat_File_Decoding": {
+                "inputs": {
+                    "content": "@body('Reads_Blob_Content_from_Azure_Storage')?['content']",
+                    "schema": {
+                        "name": "IFUFLD00P-Schema-header.xsd",
+                        "source": "LogicApp"
+                    }
+                },
+                "runAfter": {
+                    "Reads_Blob_Content_from_Azure_Storage": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "FlatFileDecoding"
+            },
+            "Flat_File_Decoding_2": {
+                "inputs": {
+                    "content": "@body('Reads_Blob_Content_from_Azure_Storage_2')?['content']",
+                    "schema": {
+                        "name": "cat5.xsd",
+                        "source": "LogicApp"
+                    }
+                },
+                "runAfter": {
+                    "Reads_Blob_Content_from_Azure_Storage_2": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "FlatFileDecoding"
+            },
+            "Reads_Blob_Content_from_Azure_Storage": {
+                "inputs": {
+                    "parameters": {
+                        "blobName": "IFUFLD00P-date.csv",
+                        "containerName": "test"
+                    },
+                    "serviceProviderConfiguration": {
+                        "connectionName": "AzureBlob-2",
+                        "operationId": "readBlob",
+                        "serviceProviderId": "/serviceProviders/AzureBlob"
+                    }
+                },
+                "runAfter": {},
+                "type": "ServiceProvider"
+            },
+            "Reads_Blob_Content_from_Azure_Storage_2": {
+                "inputs": {
+                    "parameters": {
+                        "blobName": "IFUFLC00P-date.csv",
+                        "containerName": "test"
+                    },
+                    "serviceProviderConfiguration": {
+                        "connectionName": "AzureBlob-2",
+                        "operationId": "readBlob",
+                        "serviceProviderId": "/serviceProviders/AzureBlob"
+                    }
+                },
+                "runAfter": {},
+                "type": "ServiceProvider"
+            },
+            "Response": {
+                "inputs": {
+                    "body": {
+                        "status": "success"
+                    },
+                    "statusCode": 200
+                },
+                "kind": "http",
+                "runAfter": {
+                    "Uploads_a_Blob_to_Azure_Storage": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Response"
+            },
+            "Transform_XML": {
+                "inputs": {
+                    "content": "@xml(string(outputs('Compose')))",
+                    "map": {
+                        "name": "Transform-Map-latest_.xslt",
+                        "source": "LogicApp"
+                    },
+                    "runtimeLanguage": "CSharp"
+                },
+                "runAfter": {
+                    "Compose": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Xslt"
+            },
+            "Uploads_a_Blob_to_Azure_Storage": {
+                "inputs": {
+                    "parameters": {
+                        "blobName": "merge-@{utcNow()}.xml",
+                        "containerName": "output",
+                        "content": "@body('Transform_XML')"
+                    },
+                    "serviceProviderConfiguration": {
+                        "connectionName": "AzureBlob-2",
+                        "operationId": "uploadBlob",
+                        "serviceProviderId": "/serviceProviders/AzureBlob"
+                    }
+                },
+                "runAfter": {
+                    "XML_Validation": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ServiceProvider"
+            },
+            "XML_Validation": {
+                "inputs": {
+                    "content": "@xml(outputs('Transform_XML')?['body'])",
+                    "schema": {
+                        "name": "ZMfiliaal.xsd",
+                        "source": "LogicApp"
+                    }
+                },
+                "runAfter": {
+                    "Transform_XML": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "XmlValidation"
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {},
+        "triggers": {
+            "manual": {
+                "inputs": {
+                    "method": "GET"
+                },
+                "kind": "Http",
+                "type": "Request"
+            }
+        }
+    },
+    "kind": "Stateless"
+}
